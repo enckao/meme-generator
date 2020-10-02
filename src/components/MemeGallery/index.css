@@ -1,0 +1,16 @@
+.MuiGrid-spacing-xs-10 > .MuiGrid-item {
+    padding: 20px !important;
+}
+
+.card {
+    max-width: calc(100vh/4);
+    margin: 0;
+}
+
+.media {
+    height: 220px;
+}
+
+.MuiDialogContent-root {
+    text-align: center;
+}
