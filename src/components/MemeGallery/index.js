@@ -30,9 +30,12 @@ class MemeGallery extends React.Component {
     };
 
     this.handleTextChange = this.handleTextChange.bind(this);
-    this.exportCanvasAsPNG = this.exportCanvasAsPNG.bind(this);
+    this.exportSVGAsPNG = this.exportSVGAsPNG.bind(this);
   }
 
+  /**
+   * Lifecycle function, permet d'éxécuter du code dès que le composant est monté
+   */
   componentDidMount() {
     fetch("https://api.imgflip.com/get_memes")
       .then((response) => response.json())
@@ -41,7 +44,12 @@ class MemeGallery extends React.Component {
       });
   }
 
-  openImage(index) {
+  /**
+   * Notre svg a besoin d'un href en dataURI pour pouvoir etre converti en PNG par la suite,
+   * on récupère donc notre image qu'on transforme en dataURL (base64) via l'API FileReader()
+   * NB: convertion possible via canvas mais FileReader offre moins de pertes
+   */
+  openImageAsDataURL(index) {
     const { memeCollection, dialogIsOpen } = this.state;
     fetch(memeCollection[index].url)
       .then((res) => res.blob())
@@ -63,18 +71,28 @@ class MemeGallery extends React.Component {
       });
   }
 
+  /**
+   * self-explanatory: permet de fermer ou d'ouvrir notre fenetre de dialogue
+   */
   toggleDialog() {
     this.setState((prevState) => ({
       dialogIsOpen: !prevState.dialogIsOpen,
     }));
   }
 
+  /**
+   * fonction essentielle pour prendre en compte ce que l'user tape dans le champ texte
+   * et lui en afficher le retour
+   */
   handleTextChange(event) {
     this.setState({
       [event.currentTarget.name]: event.currentTarget.value,
     });
   }
 
+  /**
+   * permet de connaitre la position de la boite de texte par rapport à l'image en dessous
+   */
   getStateObj(e, type) {
     let rect = this.imageRef.getBoundingClientRect();
     const xOffset = e.clientX - rect.left;
@@ -94,6 +112,10 @@ class MemeGallery extends React.Component {
         };
   }
 
+  /**
+   * sur le clic de la souris, on attache un eventListener à notre page pour tracker la souris
+   * au déclenchement de cet event on exécute handleMouseDrag()
+   */
   handleMouseDown(e, type) {
     const stateObj = this.getStateObj(e, type);
     document.addEventListener("mousemove", (event) =>
@@ -104,21 +126,22 @@ class MemeGallery extends React.Component {
     });
   }
 
+  /**
+   * permet de récupérer les nouvelles coordonnées de la boite de texte et de les définir dans le state
+   */
   handleMouseDrag(e, type) {
     const { isDraggingTop, isDraggingBot } = this.state;
     if (isDraggingTop || isDraggingBot) {
-      let stateObj = {};
-      if (type === "bottom" && isDraggingBot) {
-        stateObj = this.getStateObj(e, type);
-      } else if (type === "top" && isDraggingTop) {
-        stateObj = this.getStateObj(e, type);
-      }
+      let stateObj = this.getStateObj(e, type);
       this.setState({
         ...stateObj,
       });
     }
   }
 
+  /**
+   * une fois le clic laché on détache l'eventListener du DOM
+   */
   handleMouseUp() {
     document.removeEventListener("mousemove", this.handleMouseDrag);
     this.setState({
@@ -127,7 +150,15 @@ class MemeGallery extends React.Component {
     });
   }
 
-  exportCanvasAsPNG() {
+  /**
+   * grosso modo ici :
+   * - on récupre le node de notre svg via sa réf puis on le sérialize
+   * - on créé une image à partir de notre string svg
+   * - on dessine cette image dans un canvas
+   * - canvas que l'on exporte en dataURL
+   * - dataURL que l'on attache à un lien créé en caché dans le DOM pui autocliqué pour trigger le DL
+   */
+  exportSVGAsPNG() {
     const svg = this.svgRef;
     let svgData = new XMLSerializer().serializeToString(svg);
     const canvas = document.createElement("canvas");
@@ -192,7 +223,10 @@ class MemeGallery extends React.Component {
                   lg={4}
                   xl={3}
                 >
-                  <Card className="card" onClick={() => this.openImage(index)}>
+                  <Card
+                    className="card"
+                    onClick={() => this.openImageAsDataURL(index)}
+                  >
                     <CardActionArea className="item">
                       <CardMedia className="media" image={memeTile.url} />
                     </CardActionArea>
@@ -279,7 +313,7 @@ class MemeGallery extends React.Component {
                 />
                 <Button
                   autoFocus
-                  onClick={() => this.exportCanvasAsPNG()}
+                  onClick={() => this.exportSVGAsPNG()}
                   color="primary"
                 >
                   Télécharger ce meme
