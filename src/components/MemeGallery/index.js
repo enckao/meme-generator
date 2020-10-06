@@ -30,6 +30,7 @@ class MemeGallery extends React.Component {
     };
 
     this.handleTextChange = this.handleTextChange.bind(this);
+    this.exportCanvasAsPNG = this.exportCanvasAsPNG.bind(this);
   }
 
   componentDidMount() {
@@ -42,25 +43,24 @@ class MemeGallery extends React.Component {
 
   openImage(index) {
     const { memeCollection, dialogIsOpen } = this.state;
-    const image = memeCollection[index];
-    const base_image = new Image(image.width, image.height);
-    base_image.crossOrigin = "*";
-    base_image.src = image.url;
-    const base64 = this.getBase64Image(base_image);
-    this.setState({
-      currentSelectedImg: index,
-      dialogIsOpen: !dialogIsOpen,
-      currentSelectedImgbase64: base64,
-    });
-  }
-
-  getBase64Image(img) {
-    const canvas = document.createElement("canvas");
-    canvas.width = img.width;
-    canvas.height = img.height;
-    const ctx = canvas.getContext("2d");
-    ctx.drawImage(img, 0, 0);
-    return canvas.toDataURL("image/png");
+    fetch(memeCollection[index].url)
+      .then((res) => res.blob())
+      .then(
+        (blob) =>
+          new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+          })
+      )
+      .then((dataURL) => {
+        this.setState({
+          currentSelectedImg: index,
+          dialogIsOpen: !dialogIsOpen,
+          currentSelectedImgbase64: dataURL,
+        });
+      });
   }
 
   toggleDialog() {
@@ -127,21 +127,18 @@ class MemeGallery extends React.Component {
     });
   }
 
-  convertSvgToImage() {
+  exportCanvasAsPNG() {
     const svg = this.svgRef;
     let svgData = new XMLSerializer().serializeToString(svg);
     const canvas = document.createElement("canvas");
-    canvas.setAttribute("id", "canvas");
+    const ctx = canvas.getContext("2d");
     const svgSize = svg.getBoundingClientRect();
     canvas.width = svgSize.width;
     canvas.height = svgSize.height;
     const img = document.createElement("img");
-    img.setAttribute(
-      "src",
-      "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svgData)))
-    );
+    img.setAttribute("src", "data:image/svg+xml;base64," + btoa(svgData));
     img.onload = function () {
-      canvas.getContext("2d").drawImage(img, 0, 0);
+      ctx.drawImage(img, 0, 0);
       const canvasdata = canvas.toDataURL("image/png");
       const a = document.createElement("a");
       a.download = "meme.png";
@@ -156,6 +153,7 @@ class MemeGallery extends React.Component {
       memeCollection,
       dialogIsOpen,
       currentSelectedImg,
+      currentSelectedImgbase64,
       topX,
       topY,
       isDraggingTop,
@@ -225,7 +223,7 @@ class MemeGallery extends React.Component {
                     ref={(el) => {
                       this.imageRef = el;
                     }}
-                    xlinkHref={memeCollection[currentSelectedImg].url}
+                    href={currentSelectedImgbase64}
                     height={newHeight}
                     width={newWidth}
                   />
@@ -281,7 +279,7 @@ class MemeGallery extends React.Component {
                 />
                 <Button
                   autoFocus
-                  onClick={() => this.convertSvgToImage()}
+                  onClick={() => this.exportCanvasAsPNG()}
                   color="primary"
                 >
                   Télécharger ce meme
