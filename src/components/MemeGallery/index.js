@@ -76,6 +76,8 @@ class MemeGallery extends React.Component {
    */
   toggleDialog() {
     this.setState((prevState) => ({
+      topText: "",
+      bottomText: "",
       dialogIsOpen: !prevState.dialogIsOpen,
     }));
   }
@@ -132,7 +134,12 @@ class MemeGallery extends React.Component {
   handleMouseDrag(e, type) {
     const { isDraggingTop, isDraggingBot } = this.state;
     if (isDraggingTop || isDraggingBot) {
-      let stateObj = this.getStateObj(e, type);
+      let stateObj = {};
+      if (type === "bottom" && isDraggingBot) {
+        stateObj = this.getStateObj(e, type);
+      } else if (type === "top" && isDraggingTop) {
+        stateObj = this.getStateObj(e, type);
+      }
       this.setState({
         ...stateObj,
       });
